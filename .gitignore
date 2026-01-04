@@ -26,10 +26,13 @@ wheels/
 # Simulation outputs
 lineage_report_*.txt
 belief_evolution_report.txt
+lineage_beliefs.txt
+simulation_states_*.json
 
 # IDE
 .vscode/
 .idea/
+.cursor/
 *.swp
 *.swo
 *~

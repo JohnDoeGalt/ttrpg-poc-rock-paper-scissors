@@ -347,8 +347,11 @@ class DeathCleanupSystem(esper.Processor):
     def process(self):
         """Delete all entities marked for death."""
         entities_to_delete = []
+        # Collect entities with death markers, filtering out any that don't exist
+        # (esper.get_component may return stale references to deleted entities)
         for entity, death_marker in esper.get_component(DeathMarker):
-            entities_to_delete.append(entity)
+            if esper.entity_exists(entity):
+                entities_to_delete.append(entity)
         
         for entity in entities_to_delete:
             esper.delete_entity(entity)

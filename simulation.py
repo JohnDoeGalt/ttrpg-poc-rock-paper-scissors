@@ -8,6 +8,7 @@ from systems import (RPSGameSystem, RoomSwitchSystem, PopulationBalanceSystem,
                      ResourceExtractionSystem, ResourceRegenerationSystem, MortalitySystem,
                      TravelCompletionSystem, DeathCleanupSystem)
 from lineage_registry import get_registry, reset_registry
+from serialization import serialize_world, save_simulation_states
 
 
 def create_rooms(num_rooms: int = 10) -> dict[int, int]:
@@ -340,8 +341,8 @@ def print_statistics(stats: dict, tick: int):
               f"Resources: {room_resources:2}{limit_indicator} [{visual}]")
 
 
-def run_simulation(num_rooms: int = 10, num_people: int = 100, num_ticks: int = 100, 
-                   use_graphics: bool = False):
+def run_simulation(num_rooms: int = 10, num_people: int = 100, num_ticks: int = 300, 
+                   use_graphics: bool = False, save_states: bool = False, skip_gemini_prompt: bool = False):
     """
     Run the complete simulation.
     
@@ -350,6 +351,7 @@ def run_simulation(num_rooms: int = 10, num_people: int = 100, num_ticks: int = 
         num_people: Number of people in the simulation
         num_ticks: Number of ticks to run
         use_graphics: Whether to show graphical visualization
+        save_states: Whether to serialize and save world state at each tick
     """
     # Clear any existing entities/components and reset lineage registry
     esper.clear_database()
@@ -389,6 +391,12 @@ def run_simulation(num_rooms: int = 10, num_people: int = 100, num_ticks: int = 
     initial_stats = get_statistics(num_rooms)
     print_statistics(initial_stats, 0)
     
+    # Serialize initial state if requested
+    states = []
+    if save_states:
+        states.append(serialize_world())
+        print("  [SERIALIZATION] Initial state (tick 0) captured")
+    
     # Show initial visualization
     if visualizer:
         if not visualizer.visualize_tick(0, num_rooms):
@@ -404,6 +412,12 @@ def run_simulation(num_rooms: int = 10, num_people: int = 100, num_ticks: int = 
     for tick in range(1, num_ticks + 1):
         # Process all systems (this runs RPS games and room switching)
         esper.process()
+        
+        # Serialize state if requested
+        if save_states:
+            states.append(serialize_world())
+            if tick % 10 == 0:
+                print(f"  [SERIALIZATION] State at tick {tick} captured")
         
         # Update visualization every tick (0.5 seconds per tick)
         # Visualization shows deaths marked this tick (they'll be cleaned up next tick)
@@ -426,8 +440,16 @@ def run_simulation(num_rooms: int = 10, num_people: int = 100, num_ticks: int = 
     # Generate lineage report file
     generate_lineage_report(final_stats, num_ticks)
     
+    # Save serialized states if requested
+    if save_states:
+        filename = f"simulation_states_tick_{num_ticks}.json"
+        save_simulation_states(states, filename)
+    
     # Ask if user wants to run Gemini evolution analysis
-    run_gemini = input("\nRun Gemini API evolution analysis on final state? (Y/N): ").strip().upper() == 'Y'
+    if skip_gemini_prompt:
+        run_gemini = False
+    else:
+        run_gemini = input("\nRun Gemini API evolution analysis on final state? (Y/N): ").strip().upper() == 'Y'
     if run_gemini:
         # Ask if user wants interactive mode for debugging
         interactive_mode = input("Use interactive mode (pause after each API call for debugging)? (Y/N): ").strip().upper() == 'Y'
@@ -461,5 +483,8 @@ if __name__ == "__main__":
     # Ask user if they want visualization
     use_viz = input("Run with visualization? (Y/N): ").strip().upper() == 'Y'
     
-    run_simulation(num_rooms=10, num_people=100, num_ticks=100, use_graphics=use_viz)
+    # Ask if they want to save simulation states
+    save_states = input("Save simulation states to JSON? (Y/N): ").strip().upper() == 'Y'
+    
+    run_simulation(num_rooms=10, num_people=100, num_ticks=300, use_graphics=use_viz, save_states=save_states)
 
