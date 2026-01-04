@@ -1,0 +1,55 @@
+"""
+Gemini API addon for simulating philosophical belief evolution through lineage splits.
+This processes the final simulation state and shows how beliefs dilute through transitions.
+
+COPY THIS FILE TO gemini_evolution.py AND ADD YOUR API KEY
+Or set the GEMINI_API_KEY environment variable.
+"""
+import os
+import warnings
+import time
+import re
+from typing import List, Dict
+from components import RPSType
+from lineage_registry import get_registry
+
+# Suppress deprecation warnings for google.generativeai and Python version warnings
+warnings.filterwarnings('ignore', category=FutureWarning, module='google.generativeai')
+warnings.filterwarnings('ignore', category=FutureWarning, module='google.api_core')
+warnings.filterwarnings('ignore', message='.*importlib.metadata.*')
+
+# Try to import the new google.genai package, fall back to deprecated google.generativeai
+try:
+    import google.genai as genai
+    USE_NEW_API = True
+except ImportError:
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            import google.generativeai as genai
+        USE_NEW_API = False
+    except ImportError:
+        genai = None
+        USE_NEW_API = None
+
+
+# API Key Configuration
+# Put your Gemini API key here, or set it as an environment variable GEMINI_API_KEY
+# SECURITY NOTE: Never commit your API key to version control!
+# Use environment variable: export GEMINI_API_KEY='your_key_here'
+# Or edit this file locally (it's in .gitignore)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_API_KEY_HERE")
+
+# Original philosophies
+ORIGINAL_BELIEFS = {
+    RPSType.ROCK: "Stand fast, take the hit, and let time prove what cannot be moved.",
+    RPSType.PAPER: "Write the world into order—what is defined can be claimed, directed, and contained.",
+    RPSType.SCISSORS: "Sever the needless and the untrue—one clean cut turns confusion into a path."
+}
+
+BELIEF_NAMES = {
+    RPSType.ROCK: "Rockism",
+    RPSType.PAPER: "Paperism",
+    RPSType.SCISSORS: "Scissorism"
+}
+
