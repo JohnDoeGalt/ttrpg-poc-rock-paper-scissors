@@ -20,6 +20,8 @@ This simulation models:
   - **Population balancing**: If any type exceeds 60% of the population, 30% of that dominant type randomly converts to one of the other two types
   - **Lineage tracking**: When a population split occurs, new lineages are created in the LineageRegistry that preserve the full split history (e.g., "rock -> paper -> scissors"). Lineages are tracked via unique IDs for infinite scalability - no long concatenated strings!
 - Runs for **300 ticks** (configurable)
+- **Lineage reports**: Automatically generates text reports (`lineage_report_tick_{tick}.txt`) showing population counts by lineage
+- **State serialization**: Optionally saves complete world state to JSON files for analysis
 - **Optional Gemini API integration**: After simulation, can generate philosophical belief evolution reports showing how beliefs dilute through lineage splits
 
 ## Requirements
@@ -28,6 +30,7 @@ This simulation models:
 - esper library
 - pygame (optional, for visualization)
 - google-generativeai (optional, for belief evolution analysis)
+- pytest (optional, for running tests)
 
 ## Installation
 
@@ -43,8 +46,9 @@ python simulation.py
 
 You'll be prompted:
 1. **Run with visualization? (Y/N)**: Choose whether to see the graphical visualization
-2. **Run Gemini API evolution analysis? (Y/N)**: Choose whether to analyze final lineages with AI
-3. **Use interactive mode? (Y/N)**: If using Gemini, choose whether to pause after each API call
+2. **Save simulation states to JSON? (Y/N)**: Choose whether to save the world state at each tick to a JSON file
+3. **Run Gemini API evolution analysis? (Y/N)**: Choose whether to analyze final lineages with AI (prompted after simulation completes)
+4. **Use interactive mode? (Y/N)**: If using Gemini, choose whether to pause after each API call
 
 ### Visualization Features
 
@@ -90,14 +94,22 @@ To use the belief evolution analysis:
 The simulation uses Entity Component System (ECS) architecture:
 
 ### Components (`components.py`)
-- **Room**: Represents a room with its ID and adjacent rooms
+- **Room**: Represents a room with its ID, adjacent rooms, population limit, resources, and depth in the tree
 - **Person**: Represents a person with their ID, RPS type (enum: Rock, Paper, or Scissors), and current room
 - **Lineage**: Optional component that tracks lineage history via a lineage ID reference
+- **Travel**: Component marking a person who is traveling between rooms (will arrive after 1 tick)
+- **DeathMarker**: Component marking a person for death (with cause: natural, starvation, or combat)
 
 ### Systems (`systems.py`)
-- **RPSGameSystem**: Handles RPS gameplay within rooms each tick (uses base type for gameplay, preserves lineage)
-- **RoomSwitchSystem**: Handles 10% chance room switching each tick
-- **PopulationBalanceSystem**: Prevents any single type from dominating by converting 30% of a dominant type (>60%) to new lineages via the LineageRegistry
+Systems run in this order each tick:
+1. **DeathCleanupSystem**: Cleans up entities marked for death from the previous tick
+2. **ResourceRegenerationSystem**: Regenerates resources in rooms (1-2 base + population bonus)
+3. **ResourceExtractionSystem**: Allows matching pairs to extract resources and create new people
+4. **RPSGameSystem**: Handles RPS gameplay within rooms (uses base type for gameplay, preserves lineage)
+5. **MortalitySystem**: Marks people for natural death, starvation, and overcrowding
+6. **TravelCompletionSystem**: Completes travel and moves people to their destination rooms
+7. **RoomSwitchSystem**: Handles 10% chance for people to start traveling to adjacent rooms
+8. **PopulationBalanceSystem**: Prevents any type from dominating by converting 30% of a dominant type (>60%) to new lineages via the LineageRegistry
 
 ### Lineage System (`lineage_registry.py`)
 - **LineageRegistry**: Scalable system for tracking population splits using unique IDs instead of long concatenated strings
@@ -107,6 +119,24 @@ The simulation uses Entity Component System (ECS) architecture:
 
 ### Main Simulation (`simulation.py`)
 - Creates the world, rooms, and people
-- Runs the simulation loop for 100 ticks
+- Runs the simulation loop for 300 ticks (configurable)
 - Outputs statistics every 10 ticks
+- Generates lineage report files (`lineage_report_tick_{tick}.txt`) showing population by lineage
+- Optionally saves simulation states to JSON (`simulation_states_tick_{tick}.json`) for analysis
+
+### Serialization (`serialization.py`)
+- Provides utilities to serialize and save the entire ECS world state at any tick
+- Saves to JSON format for later analysis or replay
+- Captures all entities and their components
+
+### Testing
+Test files are included for all major components:
+- `test_components.py`: Component tests
+- `test_systems.py`: System tests
+- `test_simulation.py`: Simulation integration tests
+- `test_lineage_registry.py`: Lineage registry tests
+- `test_serialization.py`: Serialization tests
+- `test_integration.py`: End-to-end integration tests
+
+Run tests with: `pytest`
 
