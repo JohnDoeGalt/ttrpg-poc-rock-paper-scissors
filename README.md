@@ -22,14 +22,14 @@ This simulation models:
 - Runs for **300 ticks** (configurable)
 - **Lineage reports**: Automatically generates text reports (`lineage_report_tick_{tick}.txt`) showing population counts by lineage
 - **State serialization**: Optionally saves complete world state to JSON files for analysis
-- **Optional Gemini API integration**: After simulation, can generate philosophical belief evolution reports showing how beliefs dilute through lineage splits
+- **Optional XAI API integration**: After simulation, can generate philosophical belief evolution reports showing how beliefs dilute through lineage splits
 
 ## Requirements
 
 - Python 3.7+
 - esper library
 - pygame (optional, for visualization)
-- google-generativeai (optional, for belief evolution analysis)
+- requests (optional, for XAI API belief evolution analysis)
 - pytest (optional, for running tests)
 
 ## Installation
@@ -47,8 +47,8 @@ python simulation.py
 You'll be prompted:
 1. **Run with visualization? (Y/N)**: Choose whether to see the graphical visualization
 2. **Save simulation states to JSON? (Y/N)**: Choose whether to save the world state at each tick to a JSON file
-3. **Run Gemini API evolution analysis? (Y/N)**: Choose whether to analyze final lineages with AI (prompted after simulation completes)
-4. **Use interactive mode? (Y/N)**: If using Gemini, choose whether to pause after each API call
+3. **Run XAI API evolution analysis? (Y/N)**: Choose whether to analyze final lineages with AI (prompted after simulation completes)
+4. **Use interactive mode? (Y/N)**: If using XAI, choose whether to pause after each API call
 
 ### Visualization Features
 
@@ -63,31 +63,31 @@ The graphical visualization shows:
 
 Close the visualization window or press ESC to exit early.
 
-### Gemini API Setup (Optional)
+### XAI API Setup (Optional)
 
 To use the belief evolution analysis:
 
-1. Get your API key from: https://makersuite.google.com/app/apikey
+1. Get your API key from: https://console.x.ai
 2. Set it as an environment variable:
    ```bash
    # Windows PowerShell
-   $env:GEMINI_API_KEY="your_key_here"
+   $env:XAI_API_KEY="your_key_here"
    
    # Windows CMD
-   set GEMINI_API_KEY=your_key_here
+   set XAI_API_KEY=your_key_here
    
    # Linux/Mac
-   export GEMINI_API_KEY="your_key_here"
+   export XAI_API_KEY="your_key_here"
    ```
 
-   Or edit `gemini_evolution.py` and replace the empty string with your key (this file is in .gitignore).
+   Or edit `xai_evolution.py` and set `XAI_API_KEY` with your actual API key (this file is in .gitignore).
 
 3. Install the package:
    ```bash
-   pip install google-generativeai
+   pip install requests
    ```
 
-**Note**: Free tier has rate limits (5 requests/minute). The code handles this automatically with delays.
+**Note**: Rate limits may apply depending on your API tier. The code handles rate limits automatically with delays.
 
 ## Architecture
 

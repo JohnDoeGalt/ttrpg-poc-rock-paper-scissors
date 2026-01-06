@@ -27,7 +27,7 @@ def test_simulation_runs_without_crash(clean_world):
     """Test that a short simulation runs without crashing."""
     # Run a very short simulation
     try:
-        run_simulation(num_rooms=5, num_people=20, num_ticks=10, use_graphics=False, save_states=False, skip_gemini_prompt=True)
+        run_simulation(num_rooms=5, num_people=20, num_ticks=10, use_graphics=False, save_states=False, skip_xai_prompt=True)
         assert True  # If we get here, no crash occurred
     except Exception as e:
         pytest.fail(f"Simulation crashed with error: {e}")

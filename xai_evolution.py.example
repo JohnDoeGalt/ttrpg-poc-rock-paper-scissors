@@ -1,0 +1,44 @@
+"""
+XAI API addon for simulating philosophical belief evolution through lineage splits.
+This processes the final simulation state and shows how beliefs dilute through transitions.
+
+COPY THIS FILE TO xai_evolution.py AND ADD YOUR API KEY
+Or set the XAI_API_KEY environment variable.
+"""
+import os
+import warnings
+import time
+import re
+from typing import List, Dict
+from components import RPSType
+from lineage_registry import get_registry
+
+# Try to import the xai-sdk package
+try:
+    from xai_sdk import Client
+    XAI_AVAILABLE = True
+except ImportError:
+    Client = None
+    XAI_AVAILABLE = False
+
+
+# API Key Configuration
+# Put your XAI API key here, or set it as an environment variable XAI_API_KEY
+# SECURITY NOTE: Never commit your API key to version control!
+# Use environment variable: export XAI_API_KEY='your_key_here'
+# Or edit this file locally (it's in .gitignore)
+XAI_API_KEY = os.getenv("XAI_API_KEY", "YOUR_API_KEY_HERE")
+
+# Original philosophies
+ORIGINAL_BELIEFS = {
+    RPSType.ROCK: "Rockism is the faith of the enduring self: the archetype of the Mountain, the Stoic, the Guardian who survives by becoming unmovable. Rockists believe reality is shaped by weight, patience, and refusal—by the quiet \"no\" that outlasts storms and arguments alike. Their virtue is steadfastness: to hold a line, to keep a promise, to become simple enough that nothing can hook you. But Rockism also teaches its own shadow: rigidity hardens into pride, and pride becomes a statue—beautiful, certain, and unable to bend. That is why Rockists speak of Paperism with wary respect: not as brute opposition, but as the humbling reminder that the strongest wall can be claimed, named, and rendered powerless by a single decisive wrapping of meaning.",
+    RPSType.PAPER: "Paperism is the religion of the shaping mind: the archetype of the Scribe, the Weaver, the Lawgiver who conquers by defining. Paperists hold that the world is not ruled by force but by form—by names, contracts, rituals, maps, and stories that turn raw stone into \"property,\" \"history,\" \"duty,\" \"sin,\" \"home.\" Their virtue is discernment: to classify chaos, to bind power in symbols, to make the invisible legible and therefore governable. Yet Paperism knows its own danger: meaning can become mere surface, and cleverness can turn to denial—layers upon layers that smother truth until nothing breathes. So Paperists fear Scissorism as their necessary counterweight: the clean cut that exposes what's real, the sharp critique that slices through pretense, the moment when the page's authority is revealed as fragile fiber.",
+    RPSType.SCISSORS: "Scissorism is the faith of decisive transformation: the archetype of the Blade, the Rebel, the Surgeon who saves by separating. Scissorists teach that life demands choice—not endless interpretation, not stubborn endurance, but the courage to cut away what no longer serves: lies from fact, excess from essence, attachment from purpose. Their virtue is clarity: the swift act that ends confusion, the disciplined incision that makes a new path. But Scissorism carries its own shadow: the hunger to cut can become cruelty, and clarity can become contempt—reducing living things to scraps. That is why Scissorists honor Rockism as a needed boundary: the hard limit that stops the blade, the reminder that some truths must be endured rather than dissected, and that without something solid to meet, even the sharpest edge eventually dulls into"
+}
+
+BELIEF_NAMES = {
+    RPSType.ROCK: "Rockism",
+    RPSType.PAPER: "Paperism",
+    RPSType.SCISSORS: "Scissorism"
+}
+

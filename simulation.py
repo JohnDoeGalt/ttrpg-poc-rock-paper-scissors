@@ -342,7 +342,7 @@ def print_statistics(stats: dict, tick: int):
 
 
 def run_simulation(num_rooms: int = 10, num_people: int = 100, num_ticks: int = 300, 
-                   use_graphics: bool = False, save_states: bool = False, skip_gemini_prompt: bool = False):
+                   use_graphics: bool = False, save_states: bool = False, skip_xai_prompt: bool = False):
     """
     Run the complete simulation.
     
@@ -445,22 +445,22 @@ def run_simulation(num_rooms: int = 10, num_people: int = 100, num_ticks: int = 
         filename = f"simulation_states_tick_{num_ticks}.json"
         save_simulation_states(states, filename)
     
-    # Ask if user wants to run Gemini evolution analysis
-    if skip_gemini_prompt:
-        run_gemini = False
+    # Ask if user wants to run XAI evolution analysis
+    if skip_xai_prompt:
+        run_xai = False
     else:
-        run_gemini = input("\nRun Gemini API evolution analysis on final state? (Y/N): ").strip().upper() == 'Y'
-    if run_gemini:
+        run_xai = input("\nRun XAI API evolution analysis on final state? (Y/N): ").strip().upper() == 'Y'
+    if run_xai:
         # Ask if user wants interactive mode for debugging
         interactive_mode = input("Use interactive mode (pause after each API call for debugging)? (Y/N): ").strip().upper() == 'Y'
         try:
-            from gemini_evolution import run_gemini_evolution
-            run_gemini_evolution(num_rooms, interactive=interactive_mode)
+            from xai_evolution import run_xai_evolution
+            run_xai_evolution(num_rooms, interactive=interactive_mode)
         except ImportError:
-            print("\nWarning: gemini_evolution module not found or dependencies missing.")
-            print("Make sure google-generativeai is installed: pip install google-generativeai")
+            print("\nWarning: xai_evolution module not found or dependencies missing.")
+            print("Make sure xai-sdk is installed: pip install xai-sdk")
         except Exception as e:
-            print(f"\nError running Gemini evolution analysis: {e}")
+            print(f"\nError running XAI evolution analysis: {e}")
     
     # Close visualization if open
     if visualizer:
@@ -477,14 +477,68 @@ def run_simulation(num_rooms: int = 10, num_people: int = 100, num_ticks: int = 
 
 
 if __name__ == "__main__":
+    import sys
+    
+    print("=" * 70)
+    print("Rock-Paper-Scissors Room Simulation")
+    print("=" * 70)
+    print()
+    
     # Set random seed for reproducibility (optional)
     # random.seed(42)
     
-    # Ask user if they want visualization
-    use_viz = input("Run with visualization? (Y/N): ").strip().upper() == 'Y'
-    
-    # Ask if they want to save simulation states
-    save_states = input("Save simulation states to JSON? (Y/N): ").strip().upper() == 'Y'
-    
-    run_simulation(num_rooms=10, num_people=100, num_ticks=300, use_graphics=use_viz, save_states=save_states)
+    # Check for command-line arguments for non-interactive mode
+    if len(sys.argv) > 1:
+        # Non-interactive mode with command-line arguments
+        # Usage: python simulation.py [--viz] [--save-states] [--skip-xai] [--ticks N] [--rooms N] [--people N]
+        use_viz = '--viz' in sys.argv or '--visualization' in sys.argv
+        save_states = '--save-states' in sys.argv or '--save' in sys.argv
+        skip_xai = '--skip-xai' in sys.argv
+        
+        # Parse numeric arguments
+        num_ticks = 300
+        num_rooms = 10
+        num_people = 100
+        
+        if '--ticks' in sys.argv:
+            idx = sys.argv.index('--ticks')
+            if idx + 1 < len(sys.argv):
+                num_ticks = int(sys.argv[idx + 1])
+        
+        if '--rooms' in sys.argv:
+            idx = sys.argv.index('--rooms')
+            if idx + 1 < len(sys.argv):
+                num_rooms = int(sys.argv[idx + 1])
+        
+        if '--people' in sys.argv:
+            idx = sys.argv.index('--people')
+            if idx + 1 < len(sys.argv):
+                num_people = int(sys.argv[idx + 1])
+        
+        print(f"Running in non-interactive mode:")
+        print(f"  Visualization: {use_viz}")
+        print(f"  Save states: {save_states}")
+        print(f"  Ticks: {num_ticks}")
+        print(f"  Rooms: {num_rooms}")
+        print(f"  People: {num_people}")
+        print()
+        
+        run_simulation(num_rooms=num_rooms, num_people=num_people, num_ticks=num_ticks, 
+                      use_graphics=use_viz, save_states=save_states, skip_xai_prompt=skip_xai)
+    else:
+        # Interactive mode - ask user for preferences
+        print("Starting simulation setup...")
+        print()
+        
+        # Ask user if they want visualization
+        use_viz = input("Run with visualization? (Y/N): ").strip().upper() == 'Y'
+        
+        # Ask if they want to save simulation states
+        save_states = input("Save simulation states to JSON? (Y/N): ").strip().upper() == 'Y'
+        
+        print()
+        print("Starting simulation...")
+        print()
+        
+        run_simulation(num_rooms=10, num_people=100, num_ticks=300, use_graphics=use_viz, save_states=save_states, skip_xai_prompt=False)
 

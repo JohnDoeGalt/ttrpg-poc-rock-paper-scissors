@@ -1,5 +1,7 @@
 # Gemini API Setup Instructions
 
+> **⚠️ DEPRECATED**: This project now uses XAI API instead of Gemini. See `XAI_SETUP.md` for current setup instructions. This file is kept for reference only.
+
 ## Getting Your API Key
 
 1. Go to: https://makersuite.google.com/app/apikey

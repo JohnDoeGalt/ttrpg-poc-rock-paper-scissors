@@ -17,7 +17,7 @@ This will add all files except those in `.gitignore` (like your API key, output 
 ## Step 3: Make Your First Commit
 
 ```bash
-git commit -m "Initial commit: RPS simulation with ECS, resources, travel, and Gemini API integration"
+git commit -m "Initial commit: RPS simulation with ECS, resources, travel, and XAI API integration"
 ```
 
 ## Step 4: Create a GitHub Repository
@@ -58,11 +58,12 @@ gh repo create REPO_NAME --public --source=. --remote=origin --push
 - requirements.txt
 - .gitignore
 - SETUP.md
-- gemini_evolution.py.example (template)
+- XAI_SETUP.md
+- xai_evolution.py.example (template, if it exists)
 
 ❌ **Will NOT be uploaded** (protected by .gitignore):
-- Your API key in gemini_evolution.py (if you added it locally)
-- Output files (*.txt reports)
+- Your API key in xai_evolution.py (if you added it locally)
+- Output files (*.txt reports, *.json state files)
 - __pycache__ folders
 - .env files
 
@@ -70,6 +71,6 @@ gh repo create REPO_NAME --public --source=. --remote=origin --push
 
 1. Go to your GitHub repository page
 2. Verify all files are there
-3. Check that `gemini_evolution.py` does NOT contain your API key
+3. Check that `xai_evolution.py` does NOT contain your API key
 4. Share the repo link with others!
 
