@@ -63,9 +63,9 @@ gh repo create REPO_NAME --public --source=. --remote=origin --push
 
 ❌ **Will NOT be uploaded** (protected by .gitignore):
 - Your API key in xai_evolution.py (if you added it locally)
-- Output files (*.txt reports, *.json state files)
-- __pycache__ folders
-- .env files
+- Output files (`output_file/` directory, `*.txt` reports, `*.json` state files)
+- `__pycache__` folders
+- `.env` files
 
 ## After Uploading
 

@@ -2,13 +2,22 @@
 Main simulation file for the Rock-Paper-Scissors room-based simulation.
 """
 import random
+import os
 import esper
-from components import Room, Person, RPSType
+from components import Room, Person, RPSType, SimulationState
 from systems import (RPSGameSystem, RoomSwitchSystem, PopulationBalanceSystem, 
                      ResourceExtractionSystem, ResourceRegenerationSystem, MortalitySystem,
                      TravelCompletionSystem, DeathCleanupSystem)
 from lineage_registry import get_registry, reset_registry
 from serialization import serialize_world, save_simulation_states
+
+# Output directory for all generated reports and files
+OUTPUT_DIR = "output_file"
+
+def ensure_output_dir():
+    """Ensure the output directory exists."""
+    if not os.path.exists(OUTPUT_DIR):
+        os.makedirs(OUTPUT_DIR)
 
 
 def create_rooms(num_rooms: int = 10) -> dict[int, int]:
@@ -179,7 +188,8 @@ def generate_lineage_report(stats: dict, tick: int):
     registry = get_registry()
     from components import Lineage, RPSType
     
-    filename = f"lineage_report_tick_{tick}.txt"
+    ensure_output_dir()
+    filename = os.path.join(OUTPUT_DIR, f"lineage_report_tick_{tick}.txt")
     
     with open(filename, 'w') as f:
         f.write("=" * 70 + "\n")
@@ -218,20 +228,33 @@ def generate_lineage_report(stats: dict, tick: int):
             f.write("-" * 70 + "\n")
             
             # Group lineages by path string and sum populations
+            # Also track a representative lineage_id for each path to get tick info
             path_populations = {}
+            path_lineage_ids = {}  # Map path string to a representative lineage_id
             for lineage_id, count in lineage_populations.items():
                 lineage_path = registry.get_lineage_path(lineage_id)
                 if lineage_path:
                     lineage_str = " -> ".join(p.upper() for p in lineage_path)
                     if lineage_str not in path_populations:
                         path_populations[lineage_str] = 0
+                        path_lineage_ids[lineage_str] = lineage_id  # Store first lineage_id for this path
                     path_populations[lineage_str] += count
             
             # Sort by population (descending)
             sorted_paths = sorted(path_populations.items(), key=lambda x: -x[1])
             
             for lineage_str, total_count in sorted_paths:
-                f.write(f"  {lineage_str:50} : {total_count:4} people\n")
+                # Get tick information for this lineage path
+                tick_info = ""
+                if lineage_str in path_lineage_ids:
+                    lineage_id_for_path = path_lineage_ids[lineage_str]
+                    path_with_ticks = registry.get_lineage_path_with_ticks(lineage_id_for_path)
+                    # Extract ticks from transitions (skip the base type which has None)
+                    ticks = [str(t[1]) for t in path_with_ticks if t[1] is not None]
+                    if ticks:
+                        tick_info = f" (splits at ticks: {', '.join(ticks)})"
+                
+                f.write(f"  {lineage_str:50} : {total_count:4} people{tick_info}\n")
         else:
             f.write("No lineages created.\n")
         
@@ -357,6 +380,10 @@ def run_simulation(num_rooms: int = 10, num_people: int = 100, num_ticks: int = 
     esper.clear_database()
     reset_registry()
     
+    # Create singleton SimulationState entity to track current tick
+    sim_state_entity = esper.create_entity()
+    esper.add_component(sim_state_entity, SimulationState(current_tick=0))
+    
     # Create rooms
     print("Creating rooms...")
     create_rooms(num_rooms)
@@ -410,6 +437,10 @@ def run_simulation(num_rooms: int = 10, num_people: int = 100, num_ticks: int = 
     import time
     
     for tick in range(1, num_ticks + 1):
+        # Update SimulationState with current tick (systems can read this)
+        sim_state = esper.component_for_entity(sim_state_entity, SimulationState)
+        sim_state.current_tick = tick
+        
         # Process all systems (this runs RPS games and room switching)
         esper.process()
         
@@ -442,7 +473,8 @@ def run_simulation(num_rooms: int = 10, num_people: int = 100, num_ticks: int = 
     
     # Save serialized states if requested
     if save_states:
-        filename = f"simulation_states_tick_{num_ticks}.json"
+        ensure_output_dir()
+        filename = os.path.join(OUTPUT_DIR, f"simulation_states_tick_{num_ticks}.json")
         save_simulation_states(states, filename)
     
     # Ask if user wants to run XAI evolution analysis

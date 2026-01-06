@@ -37,7 +37,7 @@ export XAI_API_KEY="your_key_here"
 
 ### Option 2: Edit File Locally
 
-1. Edit `xai_evolution.py` directly and set `XAI_API_KEY` with your actual API key (replace the default value on line 28)
+1. Edit `xai_evolution.py` directly and set `XAI_API_KEY` with your actual API key (replace the default value on line 35)
 2. Note: This file is in `.gitignore` so it won't be committed to version control
 
 ### Get Your API Key

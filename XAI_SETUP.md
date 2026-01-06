@@ -32,7 +32,7 @@ export XAI_API_KEY="your_key_here"
 
 ### Option 2: Edit File Locally
 
-1. Edit `xai_evolution.py` directly and set `XAI_API_KEY` with your actual API key (replace the default value on line 28)
+1. Edit `xai_evolution.py` directly and set `XAI_API_KEY` with your actual API key (replace the default value on line 35)
 2. Note: This file is in `.gitignore` so it won't be committed to version control
 
 ## Installing Dependencies
@@ -60,8 +60,10 @@ Answer `Y` to process all surviving lineages through the XAI API and generate be
 
 The results will be:
 - Displayed in the console
-- Saved to `belief_evolution_report.txt`
-- Saved to `lineage_beliefs.txt`
+- Saved to `output_file/belief_evolution_report.txt`
+- Saved to `output_file/lineage_beliefs.txt`
+
+Note: The `output_file` directory will be created automatically if it doesn't exist.
 
 ## Rate Limits
 

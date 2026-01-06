@@ -15,6 +15,7 @@ class LineageEntry:
     original_base_type: RPSType  # The base type that split
     split_to_type: RPSType  # The base type it split into
     generation: int  # How many splits deep (0 = first split from base type)
+    tick: Optional[int]  # The tick when this split occurred (None for legacy lineages)
 
 
 class LineageRegistry:
@@ -29,7 +30,8 @@ class LineageRegistry:
     
     def create_lineage(self, parent_lineage_id: Optional[int], 
                        original_base_type: RPSType, 
-                       split_to_type: RPSType) -> int:
+                       split_to_type: RPSType,
+                       tick: Optional[int] = None) -> int:
         """
         Create a new lineage entry and return its ID.
         
@@ -37,6 +39,7 @@ class LineageRegistry:
             parent_lineage_id: ID of parent lineage (None for first splits from base types)
             original_base_type: The base type that is splitting
             split_to_type: The base type it's splitting into
+            tick: The tick when this split occurred (None for legacy lineages)
         
         Returns:
             The new lineage ID
@@ -56,7 +59,8 @@ class LineageRegistry:
             parent_lineage_id=parent_lineage_id,
             original_base_type=original_base_type,
             split_to_type=split_to_type,
-            generation=generation
+            generation=generation,
+            tick=tick
         )
         
         self._lineages[lineage_id] = entry
@@ -90,6 +94,36 @@ class LineageRegistry:
             # If this is generation 0, also add the original type
             if entry.generation == 0:
                 path.insert(0, entry.original_base_type.value)
+            
+            current_id = entry.parent_lineage_id
+        
+        return path
+    
+    def get_lineage_path_with_ticks(self, lineage_id: int) -> List[tuple]:
+        """
+        Reconstruct the full lineage path with tick information.
+        Returns list of (type_name, tick) tuples.
+        Example: [("rock", None), ("paper", 124), ("scissors", 156)]
+        
+        Returns empty list if lineage_id is None or not found.
+        """
+        if lineage_id is None or lineage_id == 0:
+            return []
+        
+        path = []
+        current_id = lineage_id
+        
+        while current_id is not None and current_id != 0:
+            entry = self._lineages.get(current_id)
+            if entry is None:
+                break
+            
+            # Add the split_to_type to the path with its tick
+            path.insert(0, (entry.split_to_type.value, entry.tick))
+            
+            # If this is generation 0, also add the original type (no tick for base)
+            if entry.generation == 0:
+                path.insert(0, (entry.original_base_type.value, None))
             
             current_id = entry.parent_lineage_id
         

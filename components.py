@@ -71,3 +71,11 @@ class DeathMarker:
     """
     cause: DeathCause  # Cause of death (determines X color)
 
+
+@dataclass
+class SimulationState:
+    """
+    Singleton component tracking global simulation state.
+    Should be attached to a single entity.
+    """
+    current_tick: int  # Current simulation tick

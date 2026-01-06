@@ -89,6 +89,12 @@ To use the belief evolution analysis:
 
 **Note**: Rate limits may apply depending on your API tier. The code handles rate limits automatically with delays.
 
+The belief evolution reports are saved to the `output_file/` directory:
+- `output_file/belief_evolution_report.txt` - Detailed evolution report for each lineage
+- `output_file/lineage_beliefs.txt` - Simplified lineage-to-belief mapping
+
+The `output_file` directory will be created automatically if it doesn't exist.
+
 ## Architecture
 
 The simulation uses Entity Component System (ECS) architecture:
@@ -121,8 +127,10 @@ Systems run in this order each tick:
 - Creates the world, rooms, and people
 - Runs the simulation loop for 300 ticks (configurable)
 - Outputs statistics every 10 ticks
-- Generates lineage report files (`lineage_report_tick_{tick}.txt`) showing population by lineage
-- Optionally saves simulation states to JSON (`simulation_states_tick_{tick}.json`) for analysis
+- Generates lineage report files (`output_file/lineage_report_tick_{tick}.txt`) showing population by lineage
+- Optionally saves simulation states to JSON (`output_file/simulation_states_tick_{tick}.json`) for analysis
+
+**Note**: All output files (reports, state files) are saved to the `output_file/` directory, which is created automatically if it doesn't exist.
 
 ### Serialization (`serialization.py`)
 - Provides utilities to serialize and save the entire ECS world state at any tick

@@ -5,7 +5,7 @@ Systems contain the behavior/logic that operates on entities with components.
 import random
 from typing import Optional
 import esper
-from components import Person, Room, RPSType, Lineage, Travel, DeathMarker, DeathCause
+from components import Person, Room, RPSType, Lineage, Travel, DeathMarker, DeathCause, SimulationState
 from lineage_registry import get_registry
 
 
@@ -368,6 +368,12 @@ class PopulationBalanceSystem(esper.Processor):
         """Check for dominant population and apply balancing."""
         registry = get_registry()
         
+        # Get current tick from SimulationState (singleton component)
+        current_tick = None
+        for entity, sim_state in esper.get_component(SimulationState):
+            current_tick = sim_state.current_tick
+            break  # Should only be one SimulationState entity
+        
         # Count total population and by base type
         total_count = 0
         type_counts = {RPSType.ROCK: [], RPSType.PAPER: [], RPSType.SCISSORS: []}
@@ -413,11 +419,12 @@ class PopulationBalanceSystem(esper.Processor):
                     # Choose new base type
                     new_base_type = random.choice(other_base_types)
                     
-                    # Create new lineage in registry
+                    # Create new lineage in registry with tick information
                     new_lineage_id = registry.create_lineage(
                         parent_lineage_id=current_lineage_id,
                         original_base_type=base_type,
-                        split_to_type=new_base_type
+                        split_to_type=new_base_type,
+                        tick=current_tick
                     )
                     
                     # Update person's type and lineage

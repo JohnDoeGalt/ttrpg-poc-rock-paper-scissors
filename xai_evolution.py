@@ -10,6 +10,14 @@ from typing import List, Dict
 from components import RPSType
 from lineage_registry import get_registry
 
+# Output directory for all generated reports and files
+OUTPUT_DIR = "output_file"
+
+def ensure_output_dir():
+    """Ensure the output directory exists."""
+    if not os.path.exists(OUTPUT_DIR):
+        os.makedirs(OUTPUT_DIR)
+
 # Try to import requests for API calls
 try:
     import requests
@@ -91,8 +99,12 @@ def initialize_xai(api_key: str = None) -> bool:
         return False
 
 
-def generate_belief_evolution(current_belief: str, new_philosophy: str, 
-                              new_philosophy_name: str) -> str:
+def generate_belief_evolution(current_belief: str, 
+                              original_philosophy_name: str,
+                              mixed_belief: str, 
+                              mixed_belief_name: str,
+                              current_tick: int = None, 
+                              previous_tick: int = None) -> tuple[str, str]:
     """
     Call XAI API to generate how a belief evolves when mixed with a new philosophy.
     Uses HTTP requests directly to the XAI API.
@@ -106,26 +118,39 @@ def generate_belief_evolution(current_belief: str, new_philosophy: str,
         A new belief string that merges the two philosophies
     """
     if not REQUESTS_AVAILABLE:
-        return f"[Error: requests library not available. The belief mixes with {new_philosophy_name}, but the exact synthesis could not be determined.]"
+        error_msg = f"[Error: requests library not available. The belief mixes with {mixed_belief_name}, but the exact synthesis could not be determined.]"
+        return (error_msg, original_philosophy_name)
     
     api_key = XAI_API_KEY
     if not api_key or api_key == "YOUR_API_KEY_HERE":
-        return f"[Error: XAI API key not configured. The belief mixes with {new_philosophy_name}, but the exact synthesis could not be determined.]"
+        error_msg = f"[Error: XAI API key not configured. The belief mixes with {mixed_belief_name}, but the exact synthesis could not be determined.]"
+        return (error_msg, original_philosophy_name)
+    
+    # Build tick context line (add at top if tick information is available)
+    tick_context = ""
+    if current_tick is not None:
+        if previous_tick is not None:
+            ticks_elapsed = current_tick - previous_tick
+            tick_context = f"At simulation tick {current_tick}, this belief system adopted {mixed_belief_name}. This transition occurred {ticks_elapsed} ticks after the previous split (tick {previous_tick}).\n\n"
+        else:
+            tick_context = f"At simulation tick {current_tick}, this belief system adopted {mixed_belief_name}.\n\n"
     
     # Detailed prompt for better quality outputs
-    user_prompt = f"""Merge these two philosophical belief systems into a new, evolved belief statement. The output must be substantial and meaningful.
+    user_prompt = f"""{tick_context}Merge these two philosophical belief systems into a new, evolved belief statement. The output must be substantial and meaningful.
 
-First philosophy: "{current_belief}"
+First philosophy ({original_philosophy_name}): "{current_belief}"
 
-Second philosophy: "{new_philosophy}"
+Second philosophy ({mixed_belief_name}): "{mixed_belief}"
 
 Create a new belief statement that:
-- Is 5-6 sentences long (substantial, not brief)
-- Synthesizes both philosophies into a unified, coherent worldview
-- Shows how the new philosophy transforms, reinterprets, and builds upon the old one
-- Uses rich religious/philosophical language with depth and nuance
+- The very first word of the response should be the name of the new philosophy, it should not be the same as either of the two philosophies that it was created from
+- {mixed_belief_name} should NOT be mentioned in the response
+- Is 8-10 sentences long (substantial, not brief)
+- Synthesizes both philosophies into a new worldview
+- Shows how the new philosophy transforms, reinterprets, and builds upon the old one, or even rejects some core tenets of the old one
+- Invent a specific event that triggered this split from the old one, including important figures and their roles in the event
 - Demonstrates how beliefs evolve, dilute, and reinterpret through cultural transmission
-- Feels like a natural philosophical evolution, not just a mechanical combination
+- Feels like a natural evolution, not just a mechanical combination
 - Contains specific ideas and concepts, not vague platitudes
 - Shows the tension and synthesis between the two belief systems
 - Creates a new practice within the system that neither had before
@@ -133,8 +158,8 @@ Create a new belief statement that:
 Write ONLY the new belief statement. Do not include any introductory text, labels, explanations, or formatting. Just the belief statement itself as a continuous paragraph."""
 
     try:
-        # Use grok-3 (only available model - others are deprecated)
-        model_name = 'grok-3'
+        # Use grok-4-fast-non-reasoning model
+        model_name = 'grok-4-fast-non-reasoning'
         
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -284,12 +309,29 @@ Write ONLY the new belief statement. Do not include any introductory text, label
                     if not cleaned_text.endswith('.'):
                         cleaned_text += '.'
             
-            return cleaned_text if cleaned_text else text.strip()
+            # Extract the first word as the new philosophy name (as instructed in prompt)
+            extracted_philosophy_name = original_philosophy_name  # Fallback to original name
+            if cleaned_text:
+                # Get first word, removing any punctuation
+                words = cleaned_text.split()
+                if words:
+                    first_word = words[0]
+                    # Remove trailing punctuation (periods, commas, colons, etc.)
+                    extracted_philosophy_name = first_word.rstrip('.,:;!?')
+            
+            # Prepend tick information if available
+            if current_tick is not None:
+                tick_prefix = f"{extracted_philosophy_name} was founded in tick {current_tick}. "
+                cleaned_text = tick_prefix + cleaned_text
+            
+            # Return both the belief text and the extracted philosophy name
+            return (cleaned_text if cleaned_text else text.strip(), extracted_philosophy_name)
         
         # If we get here, response format is unexpected
         print(f"Warning: Could not extract text from response. Response type: {type(response_data)}")
         print(f"Response structure: {response_data}")
-        return f"[Error: Unexpected response format. The belief mixes with {new_philosophy_name}, but the exact synthesis could not be determined.]"
+        error_msg = f"[Error: Unexpected response format. The belief mixes with {mixed_belief_name}, but the exact synthesis could not be determined.]"
+        return (error_msg, original_philosophy_name)
         
     except requests.exceptions.HTTPError as e:
         error_str = str(e)
@@ -305,25 +347,29 @@ Write ONLY the new belief statement. Do not include any introductory text, label
                     retry_delay = int(e.response.headers['Retry-After']) + 2
                 except:
                     pass
-            return f"[Error: Rate limit exceeded. Waiting {retry_delay:.1f} seconds. The belief mixes with {new_philosophy_name}, but the exact synthesis could not be determined at this time.]"
+            error_msg = f"[Error: Rate limit exceeded. Waiting {retry_delay:.1f} seconds. The belief mixes with {mixed_belief_name}, but the exact synthesis could not be determined at this time.]"
+            return (error_msg, original_philosophy_name)
         
         print(f"Error calling XAI API: {error_msg}")
-        return f"[Error: Could not generate evolution. The belief mixes with {new_philosophy_name}, but the exact synthesis could not be determined. Error: {error_msg}]"
+        error_msg = f"[Error: Could not generate evolution. The belief mixes with {mixed_belief_name}, but the exact synthesis could not be determined. Error: {error_msg}]"
+        return (error_msg, original_philosophy_name)
         
     except Exception as e:
         error_str = str(e)
         error_msg = f"{type(e).__name__}: {error_str}"
         print(f"Error calling XAI API: {error_msg}")
-        return f"[Error: Could not generate evolution. The belief mixes with {new_philosophy_name}, but the exact synthesis could not be determined. Error: {error_msg}]"
+        error_msg = f"[Error: Could not generate evolution. The belief mixes with {mixed_belief_name}, but the exact synthesis could not be determined. Error: {error_msg}]"
+        return (error_msg, original_philosophy_name)
 
 
-def process_lineage_evolution(lineage_path: List[str], interactive: bool = False) -> List[str]:
+def process_lineage_evolution(lineage_path: List[str], interactive: bool = False, lineage_id: int = None) -> List[str]:
     """
     Process a single lineage path through all its transitions.
     
     Args:
         lineage_path: List of type names, e.g., ["rock", "paper", "scissors"]
         interactive: If True, pause after each API call for debugging
+        lineage_id: Optional lineage ID to get tick information for each transition
     
     Returns:
         List of belief statements showing evolution at each step
@@ -343,34 +389,64 @@ def process_lineage_evolution(lineage_path: List[str], interactive: bool = False
         print(f"    \"{current_belief}\"")
         input("  Press Enter to continue to first merge...")
     
+    # Get tick information if lineage_id is provided
+    path_with_ticks = None
+    if lineage_id is not None:
+        registry = get_registry()
+        path_with_ticks = registry.get_lineage_path_with_ticks(lineage_id)
+    
+    # Track the current philosophy name (starts as the base type, then becomes extracted names)
+    current_philosophy_name = BELIEF_NAMES[first_type]
+    
     # Process each transition
     for i in range(1, len(lineage_path)):
-        new_type = RPSType(lineage_path[i])
-        new_philosophy = ORIGINAL_BELIEFS[new_type]
-        new_philosophy_name = BELIEF_NAMES[new_type]
+        mixed_type = RPSType(lineage_path[i])
+        mixed_belief_text = ORIGINAL_BELIEFS[mixed_type]
+        mixed_belief_name = BELIEF_NAMES[mixed_type]
+        
+        # Get tick information for this transition
+        # path_with_ticks structure: [("rock", None), ("paper", 124), ("scissors", 156)]
+        # Index 0 is base type (no tick), index i corresponds to transition to lineage_path[i]
+        current_tick = None
+        previous_tick = None
+        if path_with_ticks and i < len(path_with_ticks):
+            # The tick for transitioning to lineage_path[i] is at path_with_ticks[i][1]
+            current_tick = path_with_ticks[i][1]
+            # Previous tick is from the previous transition (if exists)
+            if i > 1 and (i-1) < len(path_with_ticks):
+                previous_tick = path_with_ticks[i-1][1]
         
         if interactive:
-            print(f"\n  [MERGE {i}/{len(lineage_path)-1}] Merging current belief with {new_philosophy_name}:")
-            print(f"    Current belief: \"{current_belief}\"")
-            print(f"    New philosophy ({new_philosophy_name}): \"{new_philosophy}\"")
+            tick_info_str = ""
+            if current_tick is not None:
+                tick_info_str = f" (at tick {current_tick})"
+            print(f"\n  [MERGE {i}/{len(lineage_path)-1}] Merging {current_philosophy_name} with {mixed_belief_name}{tick_info_str}:")
+            print(f"    Current belief ({current_philosophy_name}): \"{current_belief}\"")
+            print(f"    Mixed belief ({mixed_belief_name}): \"{mixed_belief_text}\"")
             print(f"    Calling XAI API (via HTTP)...")
         
-        # Generate the mixed belief
-        mixed_belief = generate_belief_evolution(
-            current_belief, 
-            new_philosophy, 
-            new_philosophy_name
+        # Generate the mixed belief - returns (new_belief_text, new_philosophy_name)
+        new_belief_text, new_philosophy_name = generate_belief_evolution(
+            current_belief,
+            current_philosophy_name,
+            mixed_belief_text,
+            mixed_belief_name,
+            current_tick=current_tick,
+            previous_tick=previous_tick
         )
         
         if interactive:
-            print(f"    Result: \"{mixed_belief}\"")
+            print(f"    Result: \"{new_belief_text}\"")
+            print(f"    Extracted philosophy name: {new_philosophy_name}")
             if i < len(lineage_path) - 1:
                 input(f"  Press Enter to continue to next merge...")
             else:
-                print(f"  [COMPLETE] Lineage evolution finished.")
+                print(f"  [COMPLETE] Final evolved belief generated.")
         
-        evolution.append(f"After adopting {new_philosophy_name}: {mixed_belief}")
-        current_belief = mixed_belief  # Next iteration uses the mixed version
+        # Update current belief and philosophy name for next iteration
+        current_belief = new_belief_text
+        current_philosophy_name = new_philosophy_name
+        evolution.append(f"After adopting {mixed_belief_name}: {new_belief_text}")
     
     return evolution
 
@@ -450,14 +526,22 @@ def run_xai_evolution(num_rooms: int = 10, interactive: bool = False):
         path = path_data['path']
         count = path_data['count']
         
+        # Get tick information for this lineage
+        tick_info = ""
+        if path_data['lineage_id']:
+            path_with_ticks = registry.get_lineage_path_with_ticks(path_data['lineage_id'])
+            ticks = [str(t[1]) for t in path_with_ticks if t[1] is not None]
+            if ticks:
+                tick_info = f" (splits at ticks: {', '.join(ticks)})"
+        
         print(f"\n{'='*70}")
-        print(f"Lineage: {path_str} ({count} people)")
+        print(f"Lineage: {path_str} ({count} people){tick_info}")
         print(f"{'='*70}")
         
         if interactive:
             input(f"Press Enter to start processing this lineage...")
         
-        evolution = process_lineage_evolution(path, interactive=interactive)
+        evolution = process_lineage_evolution(path, interactive=interactive, lineage_id=path_data['lineage_id'])
         
         for i, belief_statement in enumerate(evolution):
             print(f"\n{i+1}. {belief_statement}")
@@ -465,7 +549,8 @@ def run_xai_evolution(num_rooms: int = 10, interactive: bool = False):
         results.append({
             'path': path_str,
             'count': count,
-            'evolution': evolution
+            'evolution': evolution,
+            'lineage_id': path_data['lineage_id']
         })
         
         print()  # Blank line between lineages
@@ -476,15 +561,24 @@ def run_xai_evolution(num_rooms: int = 10, interactive: bool = False):
             time.sleep(5)  # 5 second delay between lineages
     
     # Save detailed evolution report
-    output_file = "belief_evolution_report.txt"
+    ensure_output_dir()
+    output_file = os.path.join(OUTPUT_DIR, "belief_evolution_report.txt")
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write("="*70 + "\n")
         f.write("PHILOSOPHICAL BELIEF EVOLUTION REPORT\n")
         f.write("="*70 + "\n\n")
         
         for result in results:
+            # Get tick information for this lineage
+            tick_info = ""
+            if 'lineage_id' in result and result['lineage_id']:
+                path_with_ticks = registry.get_lineage_path_with_ticks(result['lineage_id'])
+                ticks = [str(t[1]) for t in path_with_ticks if t[1] is not None]
+                if ticks:
+                    tick_info = f" (splits at ticks: {', '.join(ticks)})"
+            
             f.write(f"{'='*70}\n")
-            f.write(f"Lineage: {result['path']} ({result['count']} people)\n")
+            f.write(f"Lineage: {result['path']} ({result['count']} people){tick_info}\n")
             f.write(f"{'='*70}\n\n")
             
             for i, belief_statement in enumerate(result['evolution']):
@@ -493,7 +587,8 @@ def run_xai_evolution(num_rooms: int = 10, interactive: bool = False):
             f.write("\n")
     
     # Save simplified lineage-to-belief mapping
-    lineage_belief_file = "lineage_beliefs.txt"
+    ensure_output_dir()
+    lineage_belief_file = os.path.join(OUTPUT_DIR, "lineage_beliefs.txt")
     with open(lineage_belief_file, 'w', encoding='utf-8') as f:
         f.write("="*70 + "\n")
         f.write("LINEAGE TO BELIEF MAPPING\n")
@@ -510,7 +605,15 @@ def run_xai_evolution(num_rooms: int = 10, interactive: bool = False):
             else:
                 belief_text = final_belief
             
-            f.write(f"Lineage: {result['path']}\n")
+            # Get tick information for this lineage
+            tick_info = ""
+            if 'lineage_id' in result and result['lineage_id']:
+                path_with_ticks = registry.get_lineage_path_with_ticks(result['lineage_id'])
+                ticks = [str(t[1]) for t in path_with_ticks if t[1] is not None]
+                if ticks:
+                    tick_info = f" (splits at ticks: {', '.join(ticks)})"
+            
+            f.write(f"Lineage: {result['path']}{tick_info}\n")
             f.write(f"Population: {result['count']} people\n")
             f.write(f"Final Belief: {belief_text}\n")
             f.write("-" * 70 + "\n\n")
